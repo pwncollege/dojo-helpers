@@ -1,0 +1,67 @@
+#!/bin/bash -e
+
+function usage
+{
+    	echo "USAGE: $0 [ -d custom.dojo.hostname ] tcp LOCAL_PORT REMOTE_PORT"
+    	echo "USAGE: $0 [ -d custom.dojo.hostname ] udp LOCAL_PORT REMOTE_PORT"
+    	echo "USAGE: $0 [ -d custom.dojo.hostname ] vnc [ LOCAL_PORT ]"
+    	echo "USAGE: $0 [ -d custom.dojo.hostname ] unix LOCAL_PATH REMOTE_PATH"
+    	echo ""
+    	echo "This script forwards port from your local machine (default: port 5542)"
+    	echo "to the VNC server of the pwn.college dojo (or a custom dojo if -d is used)."
+    	echo ""
+    	echo "With the default port 5942, you can then connect to VNC with: "
+    	echo "# vncviewer :42"
+    	exit
+}
+
+function checkport
+{
+	case $2 in
+    		'')
+    			[ -z $3 ] && return 1
+			declare -g $1=$3
+    			return 0
+    			;;
+    		*[!0-9]*)
+    			return 1
+    			;;
+    		*)
+    			declare -g $1=$2;
+    			return 0
+    			;;
+	esac
+}
+
+DOJO=dojo.pwn.college
+while getopts "d:" OPT
+do
+	case $OPT in
+		d) DOJO=$OPTARG ;;
+		*) OPTIND=$(($OPTIND-1)); break ;;
+	esac
+done
+shift $((OPTIND-1))
+
+MODE=$1
+shift 1
+case $MODE in
+	tcp)
+		checkport LOCAL_PORT $1 || usage
+		checkport REMOTE_PORT $2 || usage
+		socat tcp-listen:$LOCAL_PORT,reuseaddr,fork exec:"ssh -v hacker@$DOJO exec socat - tcp-connect\:localhost\:$REMOTE_PORT",nofork
+		;;
+	udp)
+		checkport LOCAL_PORT $1 || usage
+		checkport REMOTE_PORT $2 || usage
+		socat udp-listen:$LOCAL_PORT,reuseaddr,fork exec:"ssh -v hacker@$DOJO exec socat - udp-connect\:localhost\:$REMOTE_PORT",nofork
+		;;
+	vnc)
+		checkport LOCAL_PORT "$1" 5942 || usage
+		socat tcp-listen:$LOCAL_PORT,reuseaddr,fork exec:"ssh -v hacker@$DOJO exec socat - unix-connect\:/tmp/vnc/vnc_socket",nofork
+		;;
+	unix)
+		LOCAL_PATH=$1
+		REMOTE_PATH=$2
+		socat unix-listen:$LOCAL_PATH,fork exec:"ssh -v hacker@$DOJO exec socat - unix-connect\:$REMOTE_PATH",nofork
+esac
