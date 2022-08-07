@@ -2,20 +2,35 @@
 
 function usage
 {
-    	echo "USAGE: $0 [ -d custom.dojo.hostname ] tcp LOCAL_PORT REMOTE_PORT"
-    	echo "USAGE: $0 [ -d custom.dojo.hostname ] udp LOCAL_PORT REMOTE_PORT"
-    	echo "USAGE: $0 [ -d custom.dojo.hostname ] vnc [ LOCAL_PORT ]"
-    	echo "USAGE: $0 [ -d custom.dojo.hostname ] unix LOCAL_PATH REMOTE_PATH"
+	echo "This script forward data between your local machine and the pwn.college dojo"
+	echo "(or a custom dojo when -d is used) in various ways."
+	echo ""
+	echo "Connect from your local machine to a TCP server inside the dojo:"
+    	echo "# $0 [ -d custom.dojo.hostname ] tcp LOCAL_PORT REMOTE_PORT"
     	echo ""
-    	echo "This script forwards port from your local machine (default: port 5542)"
-    	echo "to the VNC server of the pwn.college dojo (or a custom dojo if -d is used)."
+	echo "Connect from your local machine to a UDP server inside the dojo:"
+    	echo "# $0 [ -d custom.dojo.hostname ] udp LOCAL_PORT REMOTE_PORT"
     	echo ""
-    	echo "With the default port 5942, you can then connect to VNC with: "
-    	echo "# vncviewer :42"
+	echo "Connect from your local machine to the VPN server inside the dojo."
+	echo "(with default options, you can then connect VNC with 'vncviewer :42'"
+    	echo "# $0 [ -d custom.dojo.hostname ] vnc [ LOCAL_PORT ]"
+    	echo ""
+    	echo "Connect a local unix socket to a unix socket being listened on in the dojo."
+    	echo "# $0 [ -d custom.dojo.hostname ] unix LOCAL_PATH REMOTE_PATH"
+    	echo ""
+    	echo "Connect a TCP port *on the dojo* to a TCP server listening on your local machine."
+    	echo "Due to caveats with socat's TCP-LISTEN and fork option, this will terminate after"
+    	echo "one connection."
+    	echo "# $0 [ -d custom.dojo.hostname ] reverse-tcp LOCAL_PORT REMOTE_PORT"
+    	echo ""
+    	echo "Make a SOCKS proxy inside the dojo by reverse-sshing to your local host."
+    	echo "WARNING: a malicious dojo host could steal your ssh password or hijack"
+    	echo "         your ssh session. USE AT YOUR OWN RISK (and take precautions)."
+    	echo "# $0 [ -d custom.dojo.hostname ] socks LOCAL_SSH_USERNAME"
     	exit
 }
 
-function checkport
+function checkarg
 {
 	case $2 in
     		'')
@@ -23,11 +38,21 @@ function checkport
 			declare -g $1=$3
     			return 0
     			;;
+    		*)
+    			declare -g $1=$2;
+    			return 0
+    			;;
+	esac
+}
+
+function checkport
+{
+	case $2 in
     		*[!0-9]*)
     			return 1
     			;;
     		*)
-    			declare -g $1=$2;
+    			checkarg "$1" "$2" "$3" || return 1
     			return 0
     			;;
 	esac
@@ -44,7 +69,7 @@ done
 shift $((OPTIND-1))
 
 MODE=$1
-shift 1
+shift 1 || true
 case $MODE in
 	tcp)
 		checkport LOCAL_PORT $1 || usage
@@ -64,4 +89,20 @@ case $MODE in
 		LOCAL_PATH=$1
 		REMOTE_PATH=$2
 		socat unix-listen:$LOCAL_PATH,fork exec:"ssh -v hacker@$DOJO exec socat - unix-connect\:$REMOTE_PATH",nofork
+		;;
+	reverse-tcp)
+		LOCAL_TARGET=$1
+		checkport REMOTE_PORT $2 || usage
+		socat tcp-connect:$LOCAL_TARGET exec:"ssh -v hacker@$DOJO exec socat - tcp-listen\:$REMOTE_PORT,reuseaddr"
+		;;
+	socks)
+		SSH_TMP_PORT=2$(($RANDOM % 10000))
+		checkarg LOCAL_SSH_USERNAME $1 || usage
+		$0 -d $DOJO reverse-tcp localhost:22 $SSH_TMP_PORT &
+		sleep 5
+		ssh -t hacker@$DOJO exec ssh -v -D1080 -p$SSH_TMP_PORT -N $LOCAL_SSH_USERNAME@localhost
+		;;
+	''|*)
+		usage
+		;;
 esac
