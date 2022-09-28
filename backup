@@ -1,0 +1,75 @@
+#!/bin/bash -e
+
+function usage
+{
+	echo "This script backs up your dojo home directory."
+	echo ""
+	echo "Common options:"
+	echo "	-d	specify a custom dojo (default: dojo.pwn.college)"
+	echo "	-D	delete files no longer present on the dojo (when backing up) or remotely (when restoring)"
+	echo ""
+	echo "Backup your home directory:"
+    	echo "# $0 [ -d custom.dojo.hostname ] [ -D ] backup LOCAL_BACKUP_DIR"
+    	echo ""
+	echo "Restore your home directory:"
+    	echo "# $0 [ -d custom.dojo.hostname ] [ -D ] restore LOCAL_BACKUP_DIR"
+
+    	exit
+}
+
+function checkarg
+{
+	case $2 in
+    		'')
+    			[ -z $3 ] && return 1
+			declare -g $1=$3
+    			return 0
+    			;;
+    		*)
+    			declare -g $1=$2;
+    			return 0
+    			;;
+	esac
+}
+
+function checkport
+{
+	case $2 in
+    		*[!0-9]*)
+    			return 1
+    			;;
+    		*)
+    			checkarg "$1" "$2" "$3" || return 1
+    			return 0
+    			;;
+	esac
+}
+
+DOJO=dojo.pwn.college
+while getopts "d:D" OPT
+do
+	case $OPT in
+		d) DOJO=$OPTARG ;;
+		D) RSYNC_OPTIONS="$RSYNC_OPTIONS --delete" ;;
+		*) OPTIND=$(($OPTIND-1)); break ;;
+	esac
+done
+shift $((OPTIND-1))
+
+MODE=$1
+shift 1 || true
+case $MODE in
+	backup)
+		checkarg LOCAL_BACKUP_DIR $1 || usage
+		[ -z "$2" ] || usage
+		rsync -a $RSYNC_OPTIONS hacker@$DOJO:/home/hacker/ $LOCAL_BACKUP_DIR/
+		;;
+	restore)
+		checkarg LOCAL_BACKUP_DIR $1 || usage
+		[ -z "$2" ] || usage
+		rsync -a $RSYNC_OPTIONS $LOCAL_BACKUP_DIR/ hacker@$DOJO:/home/hacker/
+		;;
+	''|*)
+		usage
+		;;
+esac
