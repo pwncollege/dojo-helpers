@@ -2,7 +2,7 @@
 
 function usage
 {
-	echo "This script forward data between your local machine and the pwn.college dojo"
+	echo "This script forwards data between your local machine and the pwn.college dojo"
 	echo "(or a custom dojo when -d is used) in various ways."
 	echo ""
 	echo "Connect from your local machine to a TCP server inside the dojo:"
