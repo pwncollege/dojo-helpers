@@ -9,6 +9,11 @@ paths_to_ignore = []
 files_to_look_in = ["DESCRIPTION.md"]
 # Add words to highlight
 words_to_highlight = ["root", "mv", "rm"]
+# Add wrappers (start and end) to ignore (e.g. "```console": "```")
+wrappers_to_ignore = {
+    "```console": "```",
+}
+
 
 def highlightWords(file, words_to_highlight, wrapper):
     with open(file, "r") as f:
@@ -16,19 +21,28 @@ def highlightWords(file, words_to_highlight, wrapper):
 
     result = []
     current_word = ""
+    wrapping = None
     for i, ch in enumerate(contents + "0"):
+        if wrapping:
+            if contents[i:i + len(wrappers_to_ignore[wrapping])] == wrappers_to_ignore[wrapping]:
+                wrapping = None
+
+        for key, value in wrappers_to_ignore.items():
+            if contents[i:i + len(key)] == key:
+                wrapping = key
+
         if ch.isalpha():
             current_word += ch
 
         if not ch.isalpha():
-            if current_word.lower() in words_to_highlight:
+            if current_word.lower() in words_to_highlight and not wrapping:
                 if contents[i:i + len(wrapper)] != wrapper:
                     current_word = wrapper + current_word.lower() + wrapper
 
             result.append(current_word)
             result.append(ch)
-
             current_word = ""
+
 
     with open(file, "w") as f:
         result.pop()
