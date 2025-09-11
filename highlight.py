@@ -13,9 +13,16 @@ words_to_highlight = ["root", "mv", "rm"]
 wrappers_to_ignore = {
     "```console": "```",
 }
+# Add chars to strip (e.g. we want to match both `root` and `root.`, add `.` to the string chars_to_strip
+# NOTE: make sure to have the stripped version in words_to_highlighted
+chars_to_strip = "."
+# Add word separators (e.g. " " if you want the program to check for matches on every space)
+# NOTE: if you have a character as a word separator that also appears in one of the words_to_highlight,
+# then the word will NOT be highlighted (so if we have "." and "root.", "root." will not be highlighted)
+word_separators = [" ", "\n"]
 
 
-def highlightWords(file, words_to_highlight, wrapper):
+def highlightWords(file):
     with open(file, "r") as f:
         contents = f.read()
 
@@ -31,18 +38,17 @@ def highlightWords(file, words_to_highlight, wrapper):
             if contents[i:i + len(key)] == key:
                 wrapping = key
 
-        if ch.isalpha():
+        if ch not in word_separators and i < len(contents):
             current_word += ch
 
-        if not ch.isalpha():
-            if current_word.lower() in words_to_highlight and not wrapping:
+        else:
+            if current_word.strip(chars_to_strip) in words_to_highlight and not wrapping:
                 if contents[i:i + len(wrapper)] != wrapper:
-                    current_word = wrapper + current_word.lower() + wrapper
+                    current_word = wrapper + current_word[:len(current_word.strip(chars_to_strip))] + wrapper + current_word[len(current_word.strip(chars_to_strip)):]
 
             result.append(current_word)
             result.append(ch)
             current_word = ""
-
 
     with open(file, "w") as f:
         result.pop()
@@ -62,6 +68,7 @@ def find_files_to_look_in():
                 queue.append(os.path.join(file, temp_file))
 
         elif os.path.basename(file) in files_to_look_in:
-            highlightWords(file, words_to_highlight, wrapper)
+            highlightWords(file)
+
 
 find_files_to_look_in()
