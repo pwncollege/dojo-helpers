@@ -22,7 +22,7 @@ chars_to_strip = "."
 word_separators = [" ", "\n"]
 
 
-def highlightWords(file):
+def highlight_words(file):
     with open(file, "r") as f:
         contents = f.read()
 
@@ -68,7 +68,7 @@ def find_files_to_look_in():
                 queue.append(os.path.join(file, temp_file))
 
         elif os.path.basename(file) in files_to_look_in:
-            highlightWords(file)
+            highlight_words(file)
 
 
 find_files_to_look_in()
