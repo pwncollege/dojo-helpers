@@ -43,8 +43,7 @@ def highlight_words(file):
 
         else:
             if current_word.strip(chars_to_strip) in words_to_highlight and not wrapping:
-                if contents[i:i + len(wrapper)] != wrapper:
-                    current_word = wrapper + current_word[:len(current_word.strip(chars_to_strip))] + wrapper + current_word[len(current_word.strip(chars_to_strip)):]
+                current_word = wrapper + current_word[:len(current_word.strip(chars_to_strip))] + wrapper + current_word[len(current_word.strip(chars_to_strip)):]
 
             result.append(current_word)
             result.append(ch)
@@ -68,7 +67,9 @@ def find_files_to_look_in():
                 queue.append(os.path.join(file, temp_file))
 
         elif os.path.basename(file) in files_to_look_in:
-            highlight_words(file)
+            yield file
 
 
-find_files_to_look_in()
+files = find_files_to_look_in()
+for file in files:
+    highlight_words(file)
