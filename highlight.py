@@ -30,8 +30,9 @@ if search_for_highlighted_words:
     word_count = {}
     temp_words_to_highlight = set()
 
-def highlight_words(file):
-    with open(file, "r") as f:
+
+def highlight_words(current_file):
+    with open(current_file, "r") as f:
         contents = f.read()
 
     result = []
@@ -51,18 +52,20 @@ def highlight_words(file):
 
         else:
             if current_word.strip(chars_to_strip) in words_to_highlight and not wrapping:
-                current_word = wrapper + current_word[:len(current_word.strip(chars_to_strip))] + wrapper + current_word[len(current_word.strip(chars_to_strip)):]
+                current_word = (wrapper + current_word[:len(current_word.strip(chars_to_strip))]
+                                + wrapper + current_word[len(current_word.strip(chars_to_strip)):])
 
             result.append(current_word)
             result.append(ch)
             current_word = ""
 
-    with open(file, "w") as f:
+    with open(current_file, "w") as f:
         result.pop()
         f.write("".join(result))
 
-def get_highlighted_words(file):
-    with open(file, "r") as f:
+
+def get_highlighted_words(current_file):
+    with open(current_file, "r") as f:
         contents = f.read()
 
     contents += "0"
@@ -130,10 +133,10 @@ def find_files_to_look_in():
     return files
 
 
-files = find_files_to_look_in()
+files_found = find_files_to_look_in()
 
 
 if search_for_highlighted_words:
     words_to_highlight = list(temp_words_to_highlight)
-    for file in files:
+    for file in files_found:
         highlight_words(file)
