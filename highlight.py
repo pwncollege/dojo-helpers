@@ -22,6 +22,9 @@ chars_to_strip = "."
 word_separators = [" ", "\n"]
 # Choose whether you want to build words_to_highlight by searching for already highlighted words
 search_for_highlighted_words = True
+# Choose how many times a word has to highlighted before it gets added to words_to_highlight in get_highlighted_words
+# NOTE: only works when search_for_highlighted_words is True
+minimum_instances_of_highlighted_word = 4
 
 
 def highlight_words(file):
@@ -55,46 +58,55 @@ def highlight_words(file):
         result.pop()
         f.write("".join(result))
 
-def get_highlighted_words(file):
-    with open(file, "r") as f:
-        contents = f.read()
+def get_highlighted_words():
+    word_count = {}
+    temp_words_to_highlight = set()
+    for file in files:
+        with open(file, "r") as f:
+            contents = f.read()
 
-    wrapping = None
-    word_to_highlight = ""
-    words_to_highlight = []
-    i = 1
-    while i < len(contents) - 1:
-        if wrapping:
-            if contents[i - len(wrapping):i] == wrapping and not contents[i].isalpha():
-                wrapping = None
+        wrapping = None
+        word_to_highlight = ""
+        i = 1
+        while i < len(contents) - 1:
+            if wrapping:
+                if contents[i - len(wrapping):i] == wrapping and not contents[i].isalpha():
+                    wrapping = None
 
-            i += 1
-            continue
-
-        if len(word_to_highlight) > 0:
-            if contents[i:i + len(wrapper)] == wrapper:
-                words_to_highlight.append(word_to_highlight)
-                word_to_highlight = ""
-                i += len(wrapper) + 1
+                i += 1
                 continue
 
-            word_to_highlight += contents[i]
+            if len(word_to_highlight) > 0:
+                if contents[i:i + len(wrapper)] == wrapper:
+                    if word_to_highlight in word_count:
+                        word_count[word_to_highlight] += 1
+                    else:
+                        word_count[word_to_highlight] = 1
 
-        if contents[i - len(wrapper):i] == wrapper:
-            if not wrapping:
-                for wrapper_to_ignore, key in wrappers_to_ignore.items():
-                    if contents[i - 1:len(wrapper_to_ignore)] == wrapper_to_ignore:
-                        wrapping = key
-                        i += 1
+                    if word_count[word_to_highlight] >= minimum_instances_of_highlighted_word:
+                        temp_words_to_highlight.add(word_to_highlight)
 
-                if wrapping:
+                    word_to_highlight = ""
+                    i += len(wrapper) + 1
                     continue
 
-            word_to_highlight += contents[i]
+                word_to_highlight += contents[i]
 
-        i += 1
+            if contents[i - len(wrapper):i] == wrapper:
+                if not wrapping:
+                    for wrapper_to_ignore, key in wrappers_to_ignore.items():
+                        if contents[i - 1:len(wrapper_to_ignore)] == wrapper_to_ignore:
+                            wrapping = key
+                            i += 1
 
-    return words_to_highlight
+                    if wrapping:
+                        continue
+
+                word_to_highlight += contents[i]
+
+            i += 1
+
+    return list(temp_words_to_highlight)
 
 
 
@@ -118,8 +130,8 @@ def find_files_to_look_in():
 files = list(find_files_to_look_in())
 
 if search_for_highlighted_words:
-    for file in files:
-        words_to_highlight.extend(get_highlighted_words(file))
+    words_to_highlight = get_highlighted_words()
+
 
 for file in files:
     highlight_words(file)
