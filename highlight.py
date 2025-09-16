@@ -8,7 +8,7 @@ paths_to_ignore = []
 # Add files to look in
 files_to_look_in = ["DESCRIPTION.md"]
 # Add words to highlight
-words_to_highlight = ["root", "mv", "rm"]
+words_to_highlight = []
 # Add wrappers (start and end) to ignore (e.g. "```console": "```")
 wrappers_to_ignore = {
     "```console": "```",
@@ -20,6 +20,8 @@ chars_to_strip = "."
 # NOTE: if you have a character as a word separator that also appears in one of the words_to_highlight,
 # then the word will NOT be highlighted (so if we have "." and "root.", "root." will not be highlighted)
 word_separators = [" ", "\n"]
+# Choose whether you want to build words_to_highlight by searching for already highlighted words
+search_for_highlighted_words = True
 
 
 def highlight_words(file):
@@ -53,6 +55,49 @@ def highlight_words(file):
         result.pop()
         f.write("".join(result))
 
+def get_highlighted_words(file):
+    with open(file, "r") as f:
+        contents = f.read()
+
+    wrapping = None
+    word_to_highlight = ""
+    words_to_highlight = []
+    i = 1
+    while i < len(contents) - 1:
+        if wrapping:
+            if contents[i - len(wrapping):i] == wrapping and not contents[i].isalpha():
+                wrapping = None
+
+            i += 1
+            continue
+
+        if len(word_to_highlight) > 0:
+            if contents[i:i + len(wrapper)] == wrapper:
+                words_to_highlight.append(word_to_highlight)
+                word_to_highlight = ""
+                i += len(wrapper) + 1
+                continue
+
+            word_to_highlight += contents[i]
+
+        if contents[i - len(wrapper):i] == wrapper:
+            if not wrapping:
+                for wrapper_to_ignore, key in wrappers_to_ignore.items():
+                    if contents[i - 1:len(wrapper_to_ignore)] == wrapper_to_ignore:
+                        wrapping = key
+                        i += 1
+
+                if wrapping:
+                    continue
+
+            word_to_highlight += contents[i]
+
+        i += 1
+
+    return words_to_highlight
+
+
+
 
 def find_files_to_look_in():
     queue = deque(os.listdir())
@@ -70,6 +115,11 @@ def find_files_to_look_in():
             yield file
 
 
-files = find_files_to_look_in()
+files = list(find_files_to_look_in())
+
+if search_for_highlighted_words:
+    for file in files:
+        words_to_highlight.extend(get_highlighted_words(file))
+
 for file in files:
     highlight_words(file)
