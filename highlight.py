@@ -22,7 +22,7 @@ chars_to_strip = "."
 word_separators = [" ", "\n"]
 # Choose whether you want to build words_to_highlight by searching for already highlighted words
 search_for_highlighted_words = True
-# Choose how many times a word has to highlighted before it gets added to words_to_highlight in get_highlighted_words
+# Choose how many times a word has to be highlighted before it gets added to words_to_highlight in get_highlighted_words
 # NOTE: only works when search_for_highlighted_words is True
 minimum_instances_of_highlighted_word = 1
 
